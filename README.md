@@ -37,6 +37,42 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - Single Tauri process hosts the Rust backend and WebView frontend.
   - One subprocess per active session (stdio pipes; no PTY).
 
+## Architecture View
+
+- Common Core
+  - UI: WebView + xterm.js for rendering; Plan/Sidebar/Status panels.
+  - Backend: Rust (Tauri) with IPC commands for session/process, files, and plan.
+  - Runner: Stdio-only subprocess manager; stream stdout/stderr as events; no PTY, no TTY resize.
+  - Security: Scoped filesystem access; command allowlist; explicit escalation prompts.
+  - Events: `session-data`, `session-exit`, `command-progress`, `plan-updated`, `status`.
+
+- macOS (aarch64, supported now)
+  - Shell invocation: `/bin/zsh -lc` (configurable) via stdio pipes.
+  - Signals: Supports SIGINT/SIGTERM; no job control (no TTY).
+  - Packaging: `.app/.dmg`; codesign/notarization as configured.
+
+- iOS (aarch64, next)
+  - Command path: Use `ios_system` to execute built-in commands in-process through a native bridge.
+  - Scope: Only commands provided by `ios_system` are supported; TTY-required commands are unsupported.
+  - Integration: Add `src-tauri/ios/` bridge; include `ios_system` via SPM/Pods.
+  - UX: Same IPC/events; terminal remains non-interactive (no TUI support).
+
+- Windows (x86_64, future)
+  - Shell invocation: `powershell.exe -NoProfile -Command` (configurable) via stdio pipes.
+  - No ConPTY; no TTY features; paths and quoting follow Windows semantics.
+  - Packaging: `.msi`/`.exe` planned.
+
+- Linux (x86_64, future)
+  - Shell invocation: `/bin/sh -lc` (configurable) via stdio pipes.
+  - Packaging: `.AppImage`/`.deb`/`.rpm` as feasible.
+
+- Android (aarch64, future)
+  - Command path: Best-effort stdio subprocess where allowed by platform policy.
+  - Scope: No PTY/TTY; many interactive tools will not work; packaging via `.aab`/`.apk`.
+
+- Interaction Flow
+  - UI action → IPC `start_session`/`run_command` → Runner spawns stdio subprocess (or ios_system on iOS) → streams `command-progress` and `session-data` → UI updates xterm/Plan.
+
 ## Security Model
 
 - Allowlist: Tauri command allowlist only exposes vetted IPC.
