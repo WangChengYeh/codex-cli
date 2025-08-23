@@ -6,6 +6,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
 - Platforms: Supported now — macOS. Next — iOS. Planned — Windows, Linux, Android.
+- Architectures: macOS/iOS/Android = aarch64 only; Windows/Linux = x86_64 only.
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
 - Mobile runtime: Uses a Remote Engine where needed; no PTY anywhere — all platforms operate via stdio pipes.
 
@@ -157,8 +158,8 @@ Remote (mobile/optional desktop)
 Prerequisites
 - Rust toolchain (stable), `cargo`.
 - Node.js 18+, package manager (pnpm/npm/yarn).
-- macOS: Xcode Command Line Tools, Tauri prerequisites.
-- iOS (next): Xcode (latest), CocoaPods, iOS Rust targets (`aarch64-apple-ios`, `x86_64-apple-ios` for simulator).
+- macOS (supported now): Xcode Command Line Tools, Tauri prerequisites. Architecture: aarch64 (Apple Silicon) only.
+- iOS (next): Xcode (latest), CocoaPods. Rust target: `aarch64-apple-ios` (device only; no simulator/x86_64).
 
 Common scripts
 - `pnpm install` — Install frontend deps
@@ -203,9 +204,9 @@ Expected
 
 ## Packaging & Release
 
-- Initial: CI builds for macOS (.app/.dmg).
-- Next: iOS (.ipa via Xcode Archive/TestFlight).
-- Future: Windows (.msi/.exe) and Linux (.AppImage/.deb/.rpm) as feasible; Android (.aab/.apk).
+- Initial: CI builds for macOS (.app/.dmg), architecture aarch64 only.
+- Next: iOS (.ipa via Xcode Archive/TestFlight), architecture aarch64 (devices) only.
+- Future: Windows (.msi/.exe) and Linux (.AppImage/.deb/.rpm) as feasible, architecture x86_64 only; Android (.aab/.apk), architecture aarch64 only.
 - Codesigning and notarization/provisioning hooks configurable per platform.
 - Auto‑update optional on desktop; mobile uses store updates.
 
