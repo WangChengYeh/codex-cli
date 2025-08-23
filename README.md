@@ -2,10 +2,10 @@
 
 ## Overview
 
-A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Supports desktop and mobile targets with an adjusted runtime model for iOS/Android.
+A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with iOS next; Windows/Linux/Android are planned.
 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
-- Platforms: macOS, Windows, Linux, iOS, Android (x64/arm64 where supported by Tauri and deps).
+- Platforms: Supported now — macOS. Next — iOS. Planned — Windows, Linux, Android.
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
 - Mobile runtime: Uses a Remote Engine where needed; no PTY anywhere — all platforms operate via stdio pipes.
 
@@ -61,7 +61,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - `src/process.rs` — Subprocess session management (spawn, stdin write, signals, kill)
   - `src/fs.rs` — File read/write with scope checks
   - `src/plan.rs` — Plan model and updates
-  - `tauri.conf.json` — Windows, allowlist, FS scope, CSP
+  - `tauri.conf.json` — Windowing, allowlist, FS scope, CSP
 
 Note: UI framework (React/Svelte/Vanilla) is optional; spec assumes minimal TS with modular panels.
 
@@ -157,15 +157,13 @@ Remote (mobile/optional desktop)
 Prerequisites
 - Rust toolchain (stable), `cargo`.
 - Node.js 18+, package manager (pnpm/npm/yarn).
-- Tauri prerequisites per OS (Xcode CLT on macOS, MSVC on Windows).
-- iOS: Xcode (latest), CocoaPods, iOS target toolchains (`aarch64-apple-ios`, `x86_64-apple-ios` for simulator).
-- Android: Android Studio/SDK+NDK, Java 17, Gradle, Rust targets (`aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android`).
+- macOS: Xcode Command Line Tools, Tauri prerequisites.
+- iOS (next): Xcode (latest), CocoaPods, iOS Rust targets (`aarch64-apple-ios`, `x86_64-apple-ios` for simulator).
 
 Common scripts
 - `pnpm install` — Install frontend deps
-- Desktop: `pnpm tauri dev` | `pnpm tauri build`
-- iOS: `pnpm tauri ios dev` | `pnpm tauri ios build`
-- Android: `pnpm tauri android dev` | `pnpm tauri android build`
+- macOS Desktop: `pnpm tauri dev` | `pnpm tauri build`
+- iOS (next): `pnpm tauri ios dev` | `pnpm tauri ios build`
 
 ## Testing
 
@@ -205,8 +203,9 @@ Expected
 
 ## Packaging & Release
 
-- CI builds for macOS (.app/.dmg), Windows (.msi/.exe), Linux (.AppImage/.deb/.rpm as feasible).
-- Mobile: iOS (.ipa via Xcode Archive/TestFlight), Android (.aab for Play Store, .apk for sideload).
+- Initial: CI builds for macOS (.app/.dmg).
+- Next: iOS (.ipa via Xcode Archive/TestFlight).
+- Future: Windows (.msi/.exe) and Linux (.AppImage/.deb/.rpm) as feasible; Android (.aab/.apk).
 - Codesigning and notarization/provisioning hooks configurable per platform.
 - Auto‑update optional on desktop; mobile uses store updates.
 
@@ -214,7 +213,7 @@ Expected
 
 - No TTY: Full‑screen TUIs (e.g., `vim`, `top`), job control, and programs requiring a real terminal are unsupported.
 - Shell behavior: Without a TTY, some prompts and interactive flows may not function.
-- iOS/Android: Remote Engine may still be required by platform policy, but remains stdio‑based.
+- iOS: Remote Engine may still be required by platform policy, but remains stdio‑based.
 - Sandboxed FS: External tools must operate inside workspace or via escrow flow.
 - Future: Optional TTY emulation layer for limited interactive support; multi‑pane layout; richer file diff viewer; plugin API; offline mobile engine via WASM where feasible.
 
