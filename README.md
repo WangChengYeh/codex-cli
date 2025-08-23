@@ -2,13 +2,13 @@
 
 ## Overview
 
-A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with iOS next (leveraging a‑Shell's ios_system for command execution); Windows/Linux/Android are planned.
+A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with iOS next (using ios_system from GitHub for command execution); Windows/Linux/Android are planned.
 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
 - Platforms: Supported now — macOS. Next — iOS. Planned — Windows, Linux, Android.
 - Architectures: macOS/iOS/Android = aarch64 only; Windows/Linux = x86_64 only.
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
-- Mobile runtime: iOS runs commands via ios_system (adopted from a‑Shell) in‑process; Remote Engine is available for unsupported commands or policy constraints. No PTY anywhere — all platforms operate without TTYs.
+- Mobile runtime: iOS runs commands via ios_system (direct integration) in‑process; Remote Engine is available for unsupported commands or policy constraints. No PTY anywhere — all platforms operate without TTYs.
 
 ## Core Features
 
@@ -29,7 +29,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Backend (Rust, Tauri)
   - IPC commands: Session/process lifecycle, file ops, command runner, plan update.
   - Process I/O: Subprocess management via stdio pipes only; no PTY usage on any platform.
-  - iOS execution path: Integrate a‑Shell's ios_system to invoke shell‑like commands in‑process (no fork/exec); fall back to Remote Engine when a command is unavailable.
+  - iOS execution path: Integrate ios_system to invoke shell‑like commands in‑process (no fork/exec); fall back to Remote Engine when a command is unavailable.
   - File sandbox: restrict to configured workspace folder via Tauri FS scope.
   - Command allowlist + optional “escalated” prompt workflow.
 - Remote Engine (mobile and optional desktop)
@@ -119,7 +119,7 @@ Remote (mobile/optional desktop)
 
 - Model: All platforms use stdio pipes for subprocess I/O; no PTY allocation or TTY semantics.
 - Shell: Commands may be invoked via a configured shell (e.g., `/bin/zsh -lc` or `powershell -NoProfile -Command`), still without a TTY.
-- iOS: Prefer ios_system for built‑in commands (as in a‑Shell) to run them in‑process. For commands not covered by ios_system, proxy via Remote Engine.
+- iOS: Prefer ios_system for built‑in commands to run them in‑process. For commands not covered by ios_system, proxy via Remote Engine.
 - Async runtime: `tokio` for non‑blocking pipes; stream output to UI in small chunks.
 - Encoding: UTF‑8 with lossy fallback for safety.
 - Cleanup: Kill child on window close or session stop; guard against zombies.
