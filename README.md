@@ -8,7 +8,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Platforms: Supported now — macOS. Next — iOS. Planned — Windows, Linux, Android.
 - Architectures: macOS/iOS/Android = aarch64 only; Windows/Linux = x86_64 only.
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
-- Mobile runtime: iOS runs commands via ios_system (direct integration) in‑process; Remote Engine is available for unsupported commands or policy constraints. No PTY anywhere — all platforms operate without TTYs.
+- Mobile runtime: iOS runs commands via ios_system (direct integration) in‑process. No PTY anywhere — all platforms operate without TTYs.
 
 ## Core Features
 
@@ -29,13 +29,10 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Backend (Rust, Tauri)
   - IPC commands: Session/process lifecycle, file ops, command runner, plan update.
   - Process I/O: Subprocess management via stdio pipes only; no PTY usage on any platform.
-  - iOS execution path: Integrate ios_system to invoke shell‑like commands in‑process (no fork/exec); fall back to Remote Engine when a command is unavailable.
+  - iOS execution path: Integrate ios_system to invoke shell‑like commands in‑process (no fork/exec). Commands unsupported by ios_system are not supported.
   - File sandbox: restrict to configured workspace folder via Tauri FS scope.
   - Command allowlist + optional “escalated” prompt workflow.
-- Remote Engine (mobile and optional desktop)
-  - A secure WebSocket JSON/RPC bridge to a Codex Engine running on a desktop/server.
-  - Streams terminal data/events to xterm.js and proxies file/plan operations.
-  - Auth via short‑lived token; TLS required with optional cert pinning.
+<!-- Remote execution is not part of the current scope. -->
 - Processes
   - Single Tauri process hosts the Rust backend and WebView frontend.
   - One subprocess per active session (stdio pipes; no PTY).
@@ -48,7 +45,6 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Shell guardrails: Disallow destructive commands outside workspace.
 - Escalation: Explicit user approval dialog for privileged operations.
 - Secrets: Never log sensitive values; redact in UI and logs.
-- Remote engine: TLS only; token‑based auth; optional certificate pinning on mobile.
 
 ## Project Structure
 
@@ -84,10 +80,7 @@ All commands return structured results with `ok`/`error` in Rust `Result<>` form
 - `get_plan(): Plan`
 - `get_workspace(): string`
 
-Remote (mobile/optional desktop)
-- `connect_remote(url: string, token: string): void`
-- `disconnect_remote(): void`
-- `remote_status(): { connected: boolean, url?: string }`
+<!-- Remote IPC commands are out of scope. -->
 
 
 ## Events (Emitted)
@@ -97,7 +90,6 @@ Remote (mobile/optional desktop)
 - `command-progress` — `{ runId, phase: 'start'|'stdout'|'stderr'|'done', chunk? }`
 - `plan-updated` — `{ plan }`
 - `status` — `{ level: 'info'|'warn'|'error', message }`
- - `remote-connection` — `{ state: 'connecting'|'connected'|'disconnected'|'error', reason? }`
 
 ## Data Models
 
@@ -119,7 +111,7 @@ Remote (mobile/optional desktop)
 
 - Model: All platforms use stdio pipes for subprocess I/O; no PTY allocation or TTY semantics.
 - Shell: Commands may be invoked via a configured shell (e.g., `/bin/zsh -lc` or `powershell -NoProfile -Command`), still without a TTY.
-- iOS: Prefer ios_system for built‑in commands to run them in‑process. For commands not covered by ios_system, proxy via Remote Engine.
+- iOS: Prefer ios_system for built‑in commands to run them in‑process. Commands not covered by ios_system are not supported.
 - Async runtime: `tokio` for non‑blocking pipes; stream output to UI in small chunks.
 - Encoding: UTF‑8 with lossy fallback for safety.
 - Cleanup: Kill child on window close or session stop; guard against zombies.
@@ -130,7 +122,6 @@ Remote (mobile/optional desktop)
 - Default: Commands run as subprocesses using stdio pipes, scoped to workspace `cwd`; no TTY is provided.
 - Escalation: When `escalated = true`, prompt user with a signed summary of the command and its effects; require explicit approval per run.
 - Logging: Store minimal metadata (command, timestamps, exit code) locally; do not persist arguments containing secrets.
- - Remote: Commands may be proxied to a Remote Engine (also stdio‑based) when chosen or required by platform policy.
 
 ## File Access & Apply Patch
 
@@ -145,7 +136,6 @@ Remote (mobile/optional desktop)
 - `terminal`: Font settings, cursor style, theme (light/dark/system), scrollback.
 - `security`: Allowlist overrides, escalation policy (on‑request/never).
 - Storage: Persist in Tauri `AppConfigDir` as JSON; load on startup with schema validation.
- - `remote`: `{ url, token, certPin? }` for mobile/remote mode.
 
 ## Keyboard Shortcuts
 
@@ -178,7 +168,7 @@ Prerequisites
   - Add the bridge files to the iOS target, ensure the bridging header is visible, and link the `ios_system` product.
   - Ensure code signing and entitlements match any ios_system requirements documented upstream.
 - Notes:
-  - ios_system executes a set of built-in shell-like commands in-process. For commands not covered, fall back to the Remote Engine.
+  - ios_system executes a set of built-in shell-like commands in-process. Commands not covered by ios_system are not supported.
   - Behavior is non-TTY; interactive TUIs are not supported.
 
 Common scripts
@@ -234,7 +224,7 @@ Expected
 
 - No TTY: Full‑screen TUIs (e.g., `vim`, `top`), job control, and programs requiring a real terminal are unsupported.
 - Shell behavior: Without a TTY, some prompts and interactive flows may not function.
-- iOS: Command coverage follows ios_system; for unsupported commands, Remote Engine may be required.
+- iOS: Command coverage follows ios_system; commands requiring a TTY or not implemented by ios_system are not supported.
 - Sandboxed FS: External tools must operate inside workspace or via escrow flow.
 - Future: Optional TTY emulation layer for limited interactive support; multi‑pane layout; richer file diff viewer; plugin API; offline mobile engine via WASM where feasible.
 
