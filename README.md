@@ -11,7 +11,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 
 ## Core Features
 
-- Terminal: Embedded terminal via xterm.js backed by a native PTY.
+- Terminal: Embedded terminal via xterm.js backed by a native PTY when available; must not depend on `/dev/ptmx` and should gracefully fall back to pipe/remote modes.
 - Sessions: Create/stop Codex CLI sessions; persist basic session metadata.
 - Plans: View/update a live “Plan” panel reflecting steps and status.
 - Files: Read/write limited to a configured workspace directory.
@@ -27,7 +27,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - IPC layer (`@tauri-apps/api`) for commands/events.
 - Backend (Rust, Tauri)
   - IPC commands: PTY lifecycle, file ops, command runner, plan update.
-  - PTY (desktop): cross‑platform via `portable-pty` (or `pty-process` alt) with async I/O.
+  - PTY (desktop): cross‑platform via `portable-pty` (or `pty-process` alt) with async I/O; do not assume `/dev/ptmx` exists.
   - PTY (mobile):
     - iOS — no on‑device PTY; use Remote Engine (see below).
     - Android — optional local PTY via platform shell (best‑effort; feature‑gated).
@@ -89,6 +89,10 @@ Remote (mobile/optional desktop)
 - `disconnect_remote(): void`
 - `remote_status(): { connected: boolean, url?: string }`
 
+TTY preferences (desktop/mobile)
+- `start_session(input?: string, cwd?: string, preferPty?: boolean = true): SessionId` — attempts PTY when `preferPty` and available; otherwise falls back to pipe‑mode terminal emulation.
+- `run_command(args: string[], cwd?: string, escalated?: boolean, preferPty?: boolean = false): RunId` — defaults to non‑PTY for robustness; enables PTY if requested and supported.
+
 ## Events (Emitted)
 
 - `session-data` — `{ sessionId, data, stream: 'stdout'|'stderr' }`
@@ -117,6 +121,8 @@ Remote (mobile/optional desktop)
 ## PTY Implementation (Rust)
 
 - Desktop: Use `portable-pty` for cross‑platform spawning and resize.
+- No `/dev/ptmx` dependency: Never assume a Linux `devpts` PTY node exists; detect PTY availability at runtime and fall back to non‑PTY (stdio pipe) mode when absent.
+- Windows: Prefer ConPTY; avoid legacy WinPTY unless necessary.
 - Android (feature `android-pty`): Attempt to spawn `/system/bin/sh` (or user shell) with PTY where allowed; fall back to Remote Engine if unsupported.
 - iOS: No local PTY; always use Remote Engine.
 - Async runtime: `tokio` for I/O; stream PTY output in small chunks to UI.
@@ -125,7 +131,7 @@ Remote (mobile/optional desktop)
 
 ## Command Execution & Escalation
 
-- Default: Non‑interactive commands run within the session’s PTY context or as a separate subprocess, scoped to workspace `cwd`.
+- Default: Non‑interactive commands run within the session’s PTY context when available, or as a separate subprocess using stdio pipes, scoped to workspace `cwd`.
 - Escalation: When `escalated = true`, prompt user with a signed summary of the command and its effects; require explicit approval per run.
 - Logging: Store minimal metadata (command, timestamps, exit code) locally; do not persist arguments containing secrets.
  - Remote: Commands proxied to the Remote Engine when local PTY is unavailable (mobile) or when explicitly chosen.
