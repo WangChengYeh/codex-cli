@@ -73,6 +73,34 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Interaction Flow
   - UI action → IPC `start_session`/`run_command` → Runner spawns stdio subprocess (or ios_system on iOS) → streams `command-progress` and `session-data` → UI updates xterm/Plan.
 
+## Implementation Plan
+
+Phase 1 — macOS (aarch64) MVP
+- Scaffold Tauri app: Create `src` (TS UI) and `src-tauri` (Rust backend) with IPC boilerplate and security allowlist.
+- Stdio runner: Implement subprocess manager (spawn, stdin write, stdout/stderr streaming, exit) with scoped `cwd`.
+- IPC surface: Add `start_session`, `send_input`, `run_command`, `resize_view`, file ops, `apply_patch`, `update_plan`, and matching events.
+- Frontend: Wire xterm.js with fit/search/link addons; Plan panel with single in_progress validation; Sidebar/Status basics.
+- Security: Enforce workspace FS scope, command allowlist, and escalated approval flow; redact secrets in logs.
+- Build + QA: `pnpm tauri dev/build`; run unit/integration tests; execute the macOS user test (MCP Browser alongside the app).
+
+Phase 2 — iOS (aarch64) support
+- ios_system integration: Add SPM/Pods dependency; create `src-tauri/ios` native bridge (`ios_bridge.h/.mm`) to call ios_system and capture output.
+- Rust FFI: Add `extern "C"` bindings behind `cfg(target_os = "ios")`; route `run_command` to ios_system when available.
+- IPC/events parity: Reuse macOS IPC/events; ensure output chunking and status events mirror desktop behavior.
+- Packaging: Configure iOS Tauri target; codesign profiles; build `.ipa`; validate on device.
+- QA: Verify supported commands run; confirm unsupported/TTY-required commands are clearly surfaced as not supported.
+
+Phase 3 — Tooling and release hardening
+- CI: Add macOS aarch64 build job; lint (clippy), format (rustfmt), typecheck TS; cache Cargo/pnpm.
+- Arch gating: Enforce aarch64 (macOS/iOS) targets in CI; prepare x86_64 gates for Windows/Linux (future).
+- Telemetry/logging: Minimal, opt-in, sensitive-safe logs for errors and command metadata.
+- Docs: Keep README Architecture View, iOS integration notes, and Testing up to date.
+
+Phase 4 — Future platforms (scope placeholder)
+- Windows (x86_64): Stdio PowerShell runner, path/quoting audits, packaging (`.msi/.exe`).
+- Linux (x86_64): Stdio `/bin/sh` runner, packaging (`.AppImage`/`.deb`/`.rpm`).
+- Android (aarch64): Best-effort stdio subprocess where policy allows; `.aab/.apk` packaging.
+
 ## Security Model
 
 - Allowlist: Tauri command allowlist only exposes vetted IPC.
