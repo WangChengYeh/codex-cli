@@ -76,7 +76,7 @@ All commands return structured results with `ok`/`error` in Rust `Result<>` form
 - `stop_session(session_id: string): void`
 - `send_input(session_id: string, data: string): void`
 - `resize_view(session_id: string, cols: number, rows: number): void` (UI only; process does not receive TTY resize)
-- `run_command(args: string[], cwd?: string, escalated?: boolean): RunId` (runs with stdio pipes; no TTY)
+- `run_command(args: string[], cwd?: string, escalated?: boolean): RunId` (runs with stdio pipes; no TTY. On iOS, routes to ios_system when supported.)
 - `read_file(path: string): { content: string }` (scoped)
 - `write_file(path: string, content: string): void` (scoped)
 - `apply_patch(patch: string): { summary: string }` (scoped, validates format)
@@ -163,6 +163,23 @@ Prerequisites
 - Node.js 18+, package manager (pnpm/npm/yarn).
 - macOS (supported now): Xcode Command Line Tools, Tauri prerequisites. Architecture: aarch64 (Apple Silicon) only.
 - iOS (next): Xcode (latest), CocoaPods. Rust target: `aarch64-apple-ios` (device only; no simulator/x86_64). Integrates ios_system (via CocoaPods or SPM) and a small native bridge.
+
+### iOS: ios_system Integration
+- Dependency:
+  - Swift Package Manager: Add package URL `https://github.com/holzschu/ios_system` and include the `ios_system` product.
+  - CocoaPods: If preferred, add `pod 'ios_system'` (refer to the repository for exact podspec/product names and any auxiliary pods).
+- Native bridge (under `src-tauri/ios/`):
+  - `ios_bridge.h/.mm`: Expose a minimal C interface that executes a command string with ios_system and streams stdout/stderr back to the Rust side. Example signature: `int ios_run_command(const char* cmd);` Optional: streaming callbacks for incremental output.
+  - Capture output by piping stdout/stderr within the bridge (e.g., with pipes) and forwarding chunks to the WebView via Tauri events.
+- Rust glue:
+  - Add `extern "C" { fn ios_run_command(cmd: *const c_char) -> c_int; }` behind `#[cfg(target_os = "ios")]`.
+  - In the `run_command` path on iOS, call into `ios_run_command` on a background task, emit `command-progress` events with chunks, and resolve on completion with exit code.
+- Xcode project:
+  - Add the bridge files to the iOS target, ensure the bridging header is visible, and link the `ios_system` product.
+  - Ensure code signing and entitlements match any ios_system requirements documented upstream.
+- Notes:
+  - ios_system executes a set of built-in shell-like commands in-process. For commands not covered, fall back to the Remote Engine.
+  - Behavior is non-TTY; interactive TUIs are not supported.
 
 Common scripts
 - `pnpm install` — Install frontend deps
