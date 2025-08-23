@@ -7,11 +7,11 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
 - Platforms: macOS, Windows, Linux, iOS, Android (x64/arm64 where supported by Tauri and deps).
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
-- Mobile runtime: On iOS use a remote engine (no local PTY); on Android local PTY is optional and device/OS‑dependent.
+- Mobile runtime: Uses a Remote Engine where needed; no PTY anywhere — all platforms operate via stdio pipes.
 
 ## Core Features
 
-- Terminal: Embedded terminal via xterm.js backed by a native PTY when available; must not depend on `/dev/ptmx` and should gracefully fall back to pipe/remote modes.
+- Terminal: xterm.js rendering of subprocess stdio streams (no PTY on any platform).
 - Sessions: Create/stop Codex CLI sessions; persist basic session metadata.
 - Plans: View/update a live “Plan” panel reflecting steps and status.
 - Files: Read/write limited to a configured workspace directory.
@@ -26,11 +26,8 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - Panels: Terminal, Plan, Sidebar (sessions/files), Status bar.
   - IPC layer (`@tauri-apps/api`) for commands/events.
 - Backend (Rust, Tauri)
-  - IPC commands: PTY lifecycle, file ops, command runner, plan update.
-  - PTY (desktop): cross‑platform via `portable-pty` (or `pty-process` alt) with async I/O; do not assume `/dev/ptmx` exists.
-  - PTY (mobile):
-    - iOS — no on‑device PTY; use Remote Engine (see below).
-    - Android — optional local PTY via platform shell (best‑effort; feature‑gated).
+  - IPC commands: Session/process lifecycle, file ops, command runner, plan update.
+  - Process I/O: Subprocess management via stdio pipes only; no PTY usage on any platform.
   - File sandbox: restrict to configured workspace folder via Tauri FS scope.
   - Command allowlist + optional “escalated” prompt workflow.
 - Remote Engine (mobile and optional desktop)
@@ -39,7 +36,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - Auth via short‑lived token; TLS required with optional cert pinning.
 - Processes
   - Single Tauri process hosts the Rust backend and WebView frontend.
-  - One PTY process per active session (when local PTY is available).
+  - One subprocess per active session (stdio pipes; no PTY).
 
 ## Security Model
 
@@ -61,7 +58,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - `/src-tauri` — Tauri Rust backend
   - `src/main.rs` — Tauri app init, plugin setup, command registration
   - `src/ipc.rs` — IPC handlers (commands/events)
-  - `src/pty.rs` — PTY session management (spawn, write, resize, kill)
+  - `src/process.rs` — Subprocess session management (spawn, stdin write, signals, kill)
   - `src/fs.rs` — File read/write with scope checks
   - `src/plan.rs` — Plan model and updates
   - `tauri.conf.json` — Windows, allowlist, FS scope, CSP
@@ -72,11 +69,11 @@ Note: UI framework (React/Svelte/Vanilla) is optional; spec assumes minimal TS w
 
 All commands return structured results with `ok`/`error` in Rust `Result<>` form; errors are surfaced with user‑friendly messages.
 
-- `start_session(input?: string, cwd?: string): SessionId`
+- `start_session(input?: string, cwd?: string): SessionId` (creates a stdio‑pipe session; not a TTY)
 - `stop_session(session_id: string): void`
 - `send_input(session_id: string, data: string): void`
-- `resize_pty(session_id: string, cols: number, rows: number): void`
-- `run_command(args: string[], cwd?: string, escalated?: boolean): RunId`
+- `resize_view(session_id: string, cols: number, rows: number): void` (UI only; process does not receive TTY resize)
+- `run_command(args: string[], cwd?: string, escalated?: boolean): RunId` (runs with stdio pipes; no TTY)
 - `read_file(path: string): { content: string }` (scoped)
 - `write_file(path: string, content: string): void` (scoped)
 - `apply_patch(patch: string): { summary: string }` (scoped, validates format)
@@ -89,9 +86,6 @@ Remote (mobile/optional desktop)
 - `disconnect_remote(): void`
 - `remote_status(): { connected: boolean, url?: string }`
 
-TTY preferences (desktop/mobile)
-- `start_session(input?: string, cwd?: string, preferPty?: boolean = true): SessionId` — attempts PTY when `preferPty` and available; otherwise falls back to pipe‑mode terminal emulation.
-- `run_command(args: string[], cwd?: string, escalated?: boolean, preferPty?: boolean = false): RunId` — defaults to non‑PTY for robustness; enables PTY if requested and supported.
 
 ## Events (Emitted)
 
@@ -114,27 +108,25 @@ TTY preferences (desktop/mobile)
 - Theme: Respect OS theme; custom palette tokens; high‑contrast option.
 - Font: Monospace configurable; ligatures optional.
 - Clipboard: Native copy/paste; bracketed paste; Ctrl/Cmd+C/V behavior.
-- Resize: Listen to container resize; call `fitAddon.fit()` then `resize_pty`.
+- Resize: Listen to container resize; call `fitAddon.fit()` (UI only; no process resize event is sent).
 - Links: URL recognition; modifier‑click behavior to open externally with confirmation.
  - Mobile: Virtual keyboard control; touch selection; long‑press context menu; disable WebGL on older WebViews.
 
-## PTY Implementation (Rust)
+## Process I/O (No PTY)
 
-- Desktop: Use `portable-pty` for cross‑platform spawning and resize.
-- No `/dev/ptmx` dependency: Never assume a Linux `devpts` PTY node exists; detect PTY availability at runtime and fall back to non‑PTY (stdio pipe) mode when absent.
-- Windows: Prefer ConPTY; avoid legacy WinPTY unless necessary.
-- Android (feature `android-pty`): Attempt to spawn `/system/bin/sh` (or user shell) with PTY where allowed; fall back to Remote Engine if unsupported.
-- iOS: No local PTY; always use Remote Engine.
-- Async runtime: `tokio` for I/O; stream PTY output in small chunks to UI.
+- Model: All platforms use stdio pipes for subprocess I/O; no PTY allocation or TTY semantics.
+- Shell: Commands may be invoked via a configured shell (e.g., `/bin/zsh -lc` or `powershell -NoProfile -Command`), still without a TTY.
+- Async runtime: `tokio` for non‑blocking pipes; stream output to UI in small chunks.
 - Encoding: UTF‑8 with lossy fallback for safety.
 - Cleanup: Kill child on window close or session stop; guard against zombies.
+- Signals: Limited signal handling (e.g., SIGINT/CTRL_C_EVENT) where supported; no job control.
 
 ## Command Execution & Escalation
 
-- Default: Non‑interactive commands run within the session’s PTY context when available, or as a separate subprocess using stdio pipes, scoped to workspace `cwd`.
+- Default: Commands run as subprocesses using stdio pipes, scoped to workspace `cwd`; no TTY is provided.
 - Escalation: When `escalated = true`, prompt user with a signed summary of the command and its effects; require explicit approval per run.
 - Logging: Store minimal metadata (command, timestamps, exit code) locally; do not persist arguments containing secrets.
- - Remote: Commands proxied to the Remote Engine when local PTY is unavailable (mobile) or when explicitly chosen.
+ - Remote: Commands may be proxied to a Remote Engine (also stdio‑based) when chosen or required by platform policy.
 
 ## File Access & Apply Patch
 
@@ -145,7 +137,7 @@ TTY preferences (desktop/mobile)
 ## Configuration
 
 - `workspaceDir`: Absolute path to the allowed root for FS/commands.
-- `shell`: Preferred shell for PTY (e.g., `/bin/zsh`, `powershell.exe`).
+- `shell`: Preferred command interpreter for subprocess execution (no TTY).
 - `terminal`: Font settings, cursor style, theme (light/dark/system), scrollback.
 - `security`: Allowlist overrides, escalation policy (on‑request/never).
 - Storage: Persist in Tauri `AppConfigDir` as JSON; load on startup with schema validation.
@@ -177,7 +169,7 @@ Common scripts
 
 ## Testing
 
-- Rust: Unit tests for `pty`, `fs` scope checks, patch parser; integration tests for IPC.
+- Rust: Unit tests for process stdio handling, `fs` scope checks, patch parser; integration tests for IPC.
 - Frontend: Component tests for panels; terminal behavior smoke tests (fit, paste, links).
 - E2E: Scripted session flow (start → run command → update plan → stop) via Spectron‑like harness or `tauri-driver` where applicable.
 
@@ -220,11 +212,11 @@ Expected
 
 ## Limitations & Future Work
 
-- True pseudo‑TTY parity varies by OS; advanced features depend on shell.
-- iOS has no on‑device PTY; requires Remote Engine.
-- Android PTY support varies by device/OS and permissions; remote fallback required.
-- Sandboxed FS means external tools must operate inside workspace or via escrow flow.
-- Future: Multi‑pane layout, split terminals, richer file diff viewer, plugin API, offline mobile engine via WASM where feasible.
+- No TTY: Full‑screen TUIs (e.g., `vim`, `top`), job control, and programs requiring a real terminal are unsupported.
+- Shell behavior: Without a TTY, some prompts and interactive flows may not function.
+- iOS/Android: Remote Engine may still be required by platform policy, but remains stdio‑based.
+- Sandboxed FS: External tools must operate inside workspace or via escrow flow.
+- Future: Optional TTY emulation layer for limited interactive support; multi‑pane layout; richer file diff viewer; plugin API; offline mobile engine via WASM where feasible.
 
 ---
 
