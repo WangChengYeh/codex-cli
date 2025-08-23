@@ -2,13 +2,13 @@
 
 ## Overview
 
-A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with iOS next; Windows/Linux/Android are planned.
+A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with iOS next (leveraging a‑Shell's ios_system for command execution); Windows/Linux/Android are planned.
 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
 - Platforms: Supported now — macOS. Next — iOS. Planned — Windows, Linux, Android.
 - Architectures: macOS/iOS/Android = aarch64 only; Windows/Linux = x86_64 only.
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
-- Mobile runtime: Uses a Remote Engine where needed; no PTY anywhere — all platforms operate via stdio pipes.
+- Mobile runtime: iOS runs commands via ios_system (adopted from a‑Shell) in‑process; Remote Engine is available for unsupported commands or policy constraints. No PTY anywhere — all platforms operate without TTYs.
 
 ## Core Features
 
@@ -29,6 +29,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Backend (Rust, Tauri)
   - IPC commands: Session/process lifecycle, file ops, command runner, plan update.
   - Process I/O: Subprocess management via stdio pipes only; no PTY usage on any platform.
+  - iOS execution path: Integrate a‑Shell's ios_system to invoke shell‑like commands in‑process (no fork/exec); fall back to Remote Engine when a command is unavailable.
   - File sandbox: restrict to configured workspace folder via Tauri FS scope.
   - Command allowlist + optional “escalated” prompt workflow.
 - Remote Engine (mobile and optional desktop)
@@ -60,6 +61,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - `src/main.rs` — Tauri app init, plugin setup, command registration
   - `src/ipc.rs` — IPC handlers (commands/events)
   - `src/process.rs` — Subprocess session management (spawn, stdin write, signals, kill)
+  - `ios/` — Native glue for ios_system (bridge used on iOS builds)
   - `src/fs.rs` — File read/write with scope checks
   - `src/plan.rs` — Plan model and updates
   - `tauri.conf.json` — Windowing, allowlist, FS scope, CSP
@@ -117,6 +119,7 @@ Remote (mobile/optional desktop)
 
 - Model: All platforms use stdio pipes for subprocess I/O; no PTY allocation or TTY semantics.
 - Shell: Commands may be invoked via a configured shell (e.g., `/bin/zsh -lc` or `powershell -NoProfile -Command`), still without a TTY.
+- iOS: Prefer ios_system for built‑in commands (as in a‑Shell) to run them in‑process. For commands not covered by ios_system, proxy via Remote Engine.
 - Async runtime: `tokio` for non‑blocking pipes; stream output to UI in small chunks.
 - Encoding: UTF‑8 with lossy fallback for safety.
 - Cleanup: Kill child on window close or session stop; guard against zombies.
@@ -159,7 +162,7 @@ Prerequisites
 - Rust toolchain (stable), `cargo`.
 - Node.js 18+, package manager (pnpm/npm/yarn).
 - macOS (supported now): Xcode Command Line Tools, Tauri prerequisites. Architecture: aarch64 (Apple Silicon) only.
-- iOS (next): Xcode (latest), CocoaPods. Rust target: `aarch64-apple-ios` (device only; no simulator/x86_64).
+- iOS (next): Xcode (latest), CocoaPods. Rust target: `aarch64-apple-ios` (device only; no simulator/x86_64). Integrates ios_system (via CocoaPods or SPM) and a small native bridge.
 
 Common scripts
 - `pnpm install` — Install frontend deps
@@ -214,7 +217,7 @@ Expected
 
 - No TTY: Full‑screen TUIs (e.g., `vim`, `top`), job control, and programs requiring a real terminal are unsupported.
 - Shell behavior: Without a TTY, some prompts and interactive flows may not function.
-- iOS: Remote Engine may still be required by platform policy, but remains stdio‑based.
+- iOS: Command coverage follows ios_system; for unsupported commands, Remote Engine may be required.
 - Sandboxed FS: External tools must operate inside workspace or via escrow flow.
 - Future: Optional TTY emulation layer for limited interactive support; multi‑pane layout; richer file diff viewer; plugin API; offline mobile engine via WASM where feasible.
 
