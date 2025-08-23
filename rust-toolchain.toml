@@ -1,0 +1,9 @@
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+# Architecture/targets per README: macOS/iOS aarch64 only
+targets = [
+  "aarch64-apple-darwin",  # macOS (Apple Silicon)
+  "aarch64-apple-ios"      # iOS devices (no simulator)
+]
+
