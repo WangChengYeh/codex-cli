@@ -5,23 +5,51 @@
     "version": "0.1.0"
   },
   "tauri": {
+    "allowlist": {
+      "all": false,
+      "fs": {
+        "all": true,
+        "scope": ["$APPDATA/*", "$APPDATA/**"]
+      },
+      "shell": {
+        "all": false,
+        "open": true,
+        "execute": true,
+        "sidecar": false
+      },
+      "dialog": {
+        "all": true
+      },
+      "notification": {
+        "all": true
+      }
+    },
     "windows": [
       {
         "title": "Codex CLI Desktop",
         "width": 1000,
-        "height": 700
+        "height": 700,
+        "resizable": true,
+        "fullscreen": false
       }
     ],
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.example.codex-cli"
+      "identifier": "com.codexcli.desktop",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
     },
     "updater": {
       "active": false
     },
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost"
     }
   },
   "build": {

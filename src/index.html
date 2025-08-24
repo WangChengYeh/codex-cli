@@ -2,7 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Codex CLI Desktop MVP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Codex CLI</title>
     <!-- xterm.js assets (vendored) -->
     <link rel="stylesheet" href="vendor/xterm/xterm.css" />
     <script src="vendor/xterm/xterm.js"></script>
@@ -11,55 +12,273 @@
     <script src="vendor/xterm/addons/xterm-addon-web-links.js"></script>
     <script src="vendor/xterm/addons/xterm-addon-search.js"></script>
     <style>
-      body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 0; display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
-      header, footer { padding: 8px 12px; background: #f2f2f2; }
-      main { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; padding: 8px; }
-      section { border: 1px solid #ddd; border-radius: 6px; padding: 8px; overflow: hidden; }
-      h2 { margin: 0 0 6px 0; font-size: 14px; }
-      #terminal, #sessionOut { background: #111; color: #eaeaea; padding: 8px; border-radius: 4px; height: 260px; overflow: auto; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-      #status { font-size: 12px; color: #555; white-space: pre-wrap; }
-      textarea { width: 100%; height: 120px; font-family: ui-monospace, Menlo, monospace; }
-      button { margin-right: 6px; }
+      * { box-sizing: border-box; }
+      
+      body { 
+        font-family: -apple-system, system-ui, sans-serif; 
+        margin: 0; 
+        padding: 0; 
+        display: grid; 
+        grid-template-rows: auto 1fr auto; 
+        height: 100vh; 
+        height: 100dvh; /* Dynamic viewport height for mobile */
+        overflow: hidden;
+      }
+      
+      header, footer { 
+        padding: 12px; 
+        background: #f2f2f2;
+        border-bottom: 1px solid #ddd;
+      }
+      
+      main { 
+        display: grid; 
+        grid-template-columns: 1fr;
+        gap: 8px; 
+        padding: 8px;
+        overflow: auto;
+      }
+      
+      /* Desktop layout */
+      @media (min-width: 768px) {
+        main { 
+          grid-template-columns: 2fr 1fr; 
+          grid-template-rows: 1fr 1fr;
+        }
+        .terminal-section { grid-column: 1; grid-row: 1 / 3; }
+        .plan-section { grid-column: 2; grid-row: 1; }
+        .session-section { grid-column: 2; grid-row: 2; }
+        .status-section { grid-column: 1 / 3; }
+      }
+      
+      /* Mobile layout */
+      @media (max-width: 767px) {
+        main { 
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        
+        .mobile-tabs {
+          display: flex;
+          background: #f8f8f8;
+          border-radius: 8px;
+          margin-bottom: 12px;
+          overflow-x: auto;
+        }
+        
+        .tab-button {
+          flex: 1;
+          padding: 10px 16px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          border-radius: 6px;
+          margin: 2px;
+          font-size: 14px;
+          white-space: nowrap;
+          transition: background 0.2s;
+        }
+        
+        .tab-button.active {
+          background: #007AFF;
+          color: white;
+        }
+        
+        .tab-content {
+          display: none;
+        }
+        
+        .tab-content.active {
+          display: block;
+        }
+        
+        header { 
+          padding: 16px 12px 12px;
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+        
+        button {
+          min-height: 44px; /* Touch target size */
+          padding: 10px 16px;
+          font-size: 16px;
+          border-radius: 8px;
+        }
+      }
+      
+      section { 
+        border: 1px solid #ddd; 
+        border-radius: 8px; 
+        padding: 12px; 
+        overflow: hidden; 
+        background: white;
+      }
+      
+      h2 { 
+        margin: 0 0 10px 0; 
+        font-size: 16px;
+        color: #333;
+      }
+      
+      #terminal, #sessionOut { 
+        background: #1a1a1a; 
+        color: #f0f0f0; 
+        padding: 12px; 
+        border-radius: 6px; 
+        height: 300px; 
+        overflow: auto; 
+        white-space: pre-wrap; 
+        font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.4;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      @media (max-width: 767px) {
+        #terminal, #sessionOut {
+          height: 250px;
+          font-size: 14px;
+        }
+      }
+      
+      #status { 
+        font-size: 12px; 
+        color: #666; 
+        white-space: pre-wrap;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+      
+      textarea { 
+        width: 100%; 
+        height: 120px; 
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 14px;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+      }
+      
+      button { 
+        margin: 4px 6px 4px 0;
+        padding: 8px 12px;
+        background: #007AFF;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      
+      button:hover {
+        background: #0051D5;
+      }
+      
+      button:active {
+        transform: scale(0.98);
+      }
+      
+      .button-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      
+      @media (max-width: 767px) {
+        .button-group {
+          flex-direction: column;
+        }
+        
+        .button-group button {
+          margin: 0;
+          flex: 1;
+        }
+      }
+      
+      #workspace {
+        font-size: 12px;
+        color: #666;
+        font-family: ui-monospace, monospace;
+      }
+      
+      .platform-info {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-left: 8px;
+      }
+      
+      .platform-mobile {
+        background: #f3e5f5;
+        color: #7b1fa2;
+      }
     </style>
   </head>
   <body>
     <header>
-      <strong>Codex CLI Desktop MVP</strong>
+      <strong>Codex CLI</strong>
+      <span id="platformInfo" class="platform-info"></span>
     </header>
+    
     <main>
-      <section>
-        <h2>Command Runner</h2>
-        <div>
-          <button id="runPwd">Run pwd</button>
-          <button id="runLs">Run ls -la</button>
+      <!-- Mobile tabs (hidden on desktop) -->
+      <div class="mobile-tabs" style="display: none;">
+        <button class="tab-button active" data-tab="terminal">Terminal</button>
+        <button class="tab-button" data-tab="plan">Plan</button>
+        <button class="tab-button" data-tab="session">Session</button>
+        <button class="tab-button" data-tab="status">Status</button>
+      </div>
+
+      <!-- Terminal Section -->
+      <section class="terminal-section tab-content active" data-tab="terminal">
+        <h2>Terminal</h2>
+        <div class="button-group">
+          <button id="runPwd">pwd</button>
+          <button id="runLs">ls -la</button>
+          <button id="runEcho">echo test</button>
         </div>
-        <pre id="terminal"></pre>
+        <div id="terminal"></div>
       </section>
-      <section>
+      
+      <!-- Plan Section -->
+      <section class="plan-section tab-content" data-tab="plan">
         <h2>Plan</h2>
-        <div>
+        <div class="button-group">
           <button id="loadPlan">Load Plan</button>
           <button id="savePlan">Save Plan</button>
         </div>
-        <textarea id="planText" placeholder='[{"id":"1","step":"Example","status":"in_progress"}]'></textarea>
+        <textarea id="planText" placeholder='[{"id":"1","step":"Example step","status":"pending"}]'></textarea>
       </section>
-      <section>
-        <h2>Session (echo demo)</h2>
-        <div>
-          <button id="startSession">Start Session</button>
-          <button id="sendHello">Send "hello"</button>
-          <button id="stopSession">Stop Session</button>
+      
+      <!-- Session Section -->
+      <section class="session-section tab-content" data-tab="session">
+        <h2>Session</h2>
+        <div class="button-group">
+          <button id="startSession">Start</button>
+          <button id="sendHello">Send Hello</button>
+          <button id="stopSession">Stop</button>
         </div>
-        <pre id="sessionOut"></pre>
+        <div id="sessionOut"></div>
       </section>
-      <section>
+      
+      <!-- Status Section -->
+      <section class="status-section tab-content" data-tab="status">
         <h2>Status</h2>
-        <pre id="status"></pre>
+        <div id="status"></div>
       </section>
     </main>
+    
     <footer>
       <span id="workspace"></span>
     </footer>
+    
     <script src="main.js"></script>
   </body>
   </html>

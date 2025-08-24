@@ -1,6 +1,7 @@
 mod process;
 mod plan;
 mod session;
+mod platform;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -8,11 +9,11 @@ use std::path::PathBuf;
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
 
-#[derive(Default)]
 struct AppState {
   plan: Mutex<plan::Plan>,
   workspace: PathBuf,
   sessions: session::SessionManager,
+  platform_config: platform::PlatformConfig,
 }
 
 impl AppState {
@@ -21,12 +22,20 @@ impl AppState {
       plan: Mutex::new(plan::Plan::default()),
       workspace: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
       sessions: session::SessionManager::default(),
+      platform_config: platform::get_platform_info(),
     }
   }
 }
 
 #[tauri::command]
-async fn run_command(app: tauri::AppHandle, args: Vec<String>, cwd: Option<String>) -> Result<String, String> {
+async fn run_command(app: tauri::AppHandle, state: State<'_, AppState>, args: Vec<String>, cwd: Option<String>) -> Result<String, String> {
+  // Check command against platform allowlist
+  if let Some(cmd) = args.first() {
+    if !state.platform_config.is_command_allowed(cmd) {
+      return Err(format!("Command '{}' not allowed on this platform", cmd));
+    }
+  }
+  
   process::run_command_emit(&app, args, cwd)
     .await
     .map_err(|e| e.to_string())
@@ -110,6 +119,11 @@ fn resize_view(_session_id: String, _cols: u32, _rows: u32) -> Result<(), String
 #[tauri::command]
 fn get_workspace(state: State<'_, AppState>) -> Result<String, String> { Ok(state.workspace.to_string_lossy().to_string()) }
 
+#[tauri::command]
+fn get_platform_info(state: State<'_, AppState>) -> Result<platform::PlatformConfig, String> {
+  Ok(state.platform_config.clone())
+}
+
 #[derive(Deserialize)]
 struct ApplyPatchRequest { patch: String }
 
@@ -136,7 +150,9 @@ fn main() {
       // files
       read_file, write_file, get_workspace, apply_patch,
       // sessions
-      start_session, send_input, stop_session, resize_view
+      start_session, send_input, stop_session, resize_view,
+      // platform
+      get_platform_info
     ])
     .plugin(tauri_plugin_log::Builder::default().build())
     .run(tauri::generate_context!())

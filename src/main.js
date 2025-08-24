@@ -7,9 +7,12 @@ const sessOut = document.getElementById('sessionOut');
 const status = document.getElementById('status');
 const planText = document.getElementById('planText');
 const workspaceEl = document.getElementById('workspace');
+const platformInfoEl = document.getElementById('platformInfo');
 
 let lastRunId = null;
 let currentSessionId = null;
+let platformInfo = null;
+let isMobile = false;
 
 // Terminal abstraction: prefer xterm.js if available, otherwise fall back to a <pre>.
 let term = {
@@ -59,10 +62,80 @@ if (window.Terminal) {
   }
 }
 
+// Initialize platform info and UI
+async function initializePlatform() {
+  try {
+    platformInfo = await invoke('get_platform_info');
+    isMobile = platformInfo.platform === 'Android' || platformInfo.platform === 'iOS';
+    
+    // Update platform info display
+    platformInfoEl.textContent = platformInfo.platform;
+    if (isMobile) {
+      platformInfoEl.classList.add('platform-mobile');
+    }
+    
+    // Show/hide mobile tabs based on screen size
+    updateMobileLayout();
+    
+    console.log('Platform:', platformInfo);
+  } catch (e) {
+    console.warn('Failed to get platform info:', e);
+    platformInfoEl.textContent = 'Desktop';
+  }
+}
+
+// Mobile UI handling
+function updateMobileLayout() {
+  const isMobileScreen = window.innerWidth <= 767;
+  const mobileTabs = document.querySelector('.mobile-tabs');
+  
+  if (isMobileScreen) {
+    mobileTabs.style.display = 'flex';
+    // Show only active tab content on mobile
+    const activeTab = document.querySelector('.tab-button.active')?.dataset.tab || 'terminal';
+    showMobileTab(activeTab);
+  } else {
+    mobileTabs.style.display = 'none';
+    // Show all content on desktop
+    document.querySelectorAll('.tab-content').forEach(el => {
+      el.style.display = 'block';
+      el.classList.add('active');
+    });
+  }
+}
+
+// Mobile tab switching
+function showMobileTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  
+  // Update tab content visibility
+  document.querySelectorAll('.tab-content').forEach(content => {
+    const isActive = content.dataset.tab === tabName;
+    content.style.display = isActive ? 'block' : 'none';
+    content.classList.toggle('active', isActive);
+  });
+}
+
+// Add mobile tab click handlers
+document.querySelectorAll('.tab-button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    showMobileTab(btn.dataset.tab);
+  });
+});
+
+// Handle window resize
+window.addEventListener('resize', updateMobileLayout);
+
 // Show workspace path
 invoke('get_workspace').then(ws => {
   workspaceEl.textContent = `Workspace: ${ws}`;
 }).catch(() => {});
+
+// Initialize platform
+initializePlatform();
 
 // Listen to command-progress and session events
 if (eventApi.listen) {
@@ -92,12 +165,27 @@ if (eventApi.listen) {
   });
 }
 
+// Command execution helpers
+async function runCommand(args) {
+  try {
+    const result = await invoke('run_command', { args });
+    return result;
+  } catch (e) {
+    status.textContent += `run_command error: ${e}\n`;
+    throw e;
+  }
+}
+
 document.getElementById('runPwd').addEventListener('click', async () => {
-  await invoke('run_command', { args: ['/bin/zsh', '-lc', 'pwd'] }).catch(e => { status.textContent += `run_command error: ${e}\n`; });
+  await runCommand(['pwd']);
 });
 
 document.getElementById('runLs').addEventListener('click', async () => {
-  await invoke('run_command', { args: ['/bin/zsh', '-lc', 'ls -la'] }).catch(e => { status.textContent += `run_command error: ${e}\n`; });
+  await runCommand(['ls', '-la']);
+});
+
+document.getElementById('runEcho').addEventListener('click', async () => {
+  await runCommand(['echo', 'test']);
 });
 
 document.getElementById('startSession').addEventListener('click', async () => {
