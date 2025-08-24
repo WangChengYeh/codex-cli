@@ -1,0 +1,25 @@
+{
+  "package_name": "com.codexcli.desktop",
+  "app_name": "Codex CLI",
+  "version_code": 1,
+  "version_name": "0.1.0",
+  "min_sdk_version": 24,
+  "target_sdk_version": 34,
+  "compile_sdk_version": 34,
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.READ_EXTERNAL_STORAGE",
+    "android.permission.WRITE_EXTERNAL_STORAGE"
+  ],
+  "features": [
+    {
+      "name": "android.hardware.touchscreen",
+      "required": true
+    },
+    {
+      "name": "android.software.webview",
+      "required": true
+    }
+  ]
+}
