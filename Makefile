@@ -20,6 +20,7 @@ help:
 	@echo "  android-release        - Build release APK"
 	@echo "  android-install        - Install APK on connected device"
 	@echo "  android-test          - Run device tests"
+	@echo "  android-test-mcp      - Run MCP-based APK testing"
 	@echo "  android-clean         - Clean Android build artifacts"
 	@echo ""
 	@echo "🍎 iOS Targets (Future):"
@@ -137,14 +138,24 @@ android-install: check-android-env
 	cd android-build && ./test-device.sh
 
 # Run comprehensive Android device tests
-android-test: check-android-env
+android-test:
 	@echo "🧪 Running Android device tests..."
 	@if [ ! -f "scripts/simulate-android-test.js" ]; then \
 		echo "❌ Test scripts not found. Please ensure project is properly set up."; \
 		exit 1; \
 	fi
 	node scripts/simulate-android-test.js
-	@echo "📱 For real device testing, run: make android-install"
+	@echo "📱 For real device testing with Android SDK, run: make android-install"
+
+# Run MCP-based Android APK testing
+android-test-mcp:
+	@echo "📱 Running MCP Android APK testing..."
+	@if [ ! -f "scripts/mcp-android-test.js" ]; then \
+		echo "❌ MCP test scripts not found. Please ensure project is properly set up."; \
+		exit 1; \
+	fi
+	node scripts/mcp-android-test.js
+	@echo "✅ MCP Android testing complete! See MCP-ANDROID-TEST-REPORT.md for details."
 
 # Clean Android build artifacts
 android-clean:
@@ -277,5 +288,6 @@ run: dev
 a: android-debug
 ai: android-install
 at: android-test
+atm: android-test-mcp
 d: dev
 b: build
