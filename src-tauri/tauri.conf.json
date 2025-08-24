@@ -17,17 +17,7 @@
       "targets": "all",
       "identifier": "com.example.codex-cli"
     },
-    "security": {
-      "csp": null,
-      "allowlist": {
-        "shell": false,
-        "fs": {
-          "all": false,
-          "readFile": true,
-          "writeFile": true
-        }
-      }
-    },
+    
     "updater": {
       "active": false
     }
