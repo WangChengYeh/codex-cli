@@ -17,13 +17,15 @@
       "targets": "all",
       "identifier": "com.example.codex-cli"
     },
-    "csp": null,
-    "allowlist": {
-      "shell": false,
-      "fs": {
-        "all": false,
-        "readFile": true,
-        "writeFile": true
+    "security": {
+      "csp": null,
+      "allowlist": {
+        "shell": false,
+        "fs": {
+          "all": false,
+          "readFile": true,
+          "writeFile": true
+        }
       }
     },
     "updater": {
@@ -37,4 +39,3 @@
     "distDir": "src"
   }
 }
-
