@@ -17,15 +17,17 @@
       "targets": "all",
       "identifier": "com.example.codex-cli"
     },
-    
     "updater": {
       "active": false
+    },
+    "security": {
+      "csp": null
     }
   },
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "devPath": "src",
-    "distDir": "src"
+    "devPath": "../src",
+    "distDir": "../src"
   }
 }

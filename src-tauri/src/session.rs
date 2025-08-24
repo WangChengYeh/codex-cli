@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::Serialize;
-use std::{collections::HashMap, path::PathBuf};
-use tauri::AppHandle;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use tauri::{AppHandle, Manager};
 use tokio::{io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, process::{Child, ChildStdin, Command}, sync::Mutex};
 use uuid::Uuid;
 // Lightweight redactor without regex for offline builds.
@@ -33,13 +33,20 @@ fn redact(s: &str) -> String {
   out
 }
 
-#[derive(Default)]
 pub struct SessionManager {
-  inner: Mutex<HashMap<String, SessionHandle>>,
+  inner: Arc<Mutex<HashMap<String, SessionHandle>>>,
+}
+
+impl Default for SessionManager {
+  fn default() -> Self {
+    Self {
+      inner: Arc::new(Mutex::new(HashMap::new())),
+    }
+  }
 }
 
 struct SessionHandle {
-  child: Child,
+  child: Mutex<Child>,
   stdin: Mutex<Option<ChildStdin>>,
 }
 
@@ -75,7 +82,7 @@ impl SessionManager {
     let stdin = child.stdin.take();
 
     // register handle
-    let handle = SessionHandle { child, stdin: Mutex::new(stdin) };
+    let handle = SessionHandle { child: Mutex::new(child), stdin: Mutex::new(stdin) };
     {
       let mut map = self.inner.lock().await;
       map.insert(session_id.clone(), handle);
@@ -120,8 +127,9 @@ impl SessionManager {
     tokio::spawn(async move {
       let code = {
         let mut map = mgr.lock().await;
-        if let Some(mut handle) = map.remove(&sid_exit) {
-          match handle.child.wait().await {
+        if let Some(handle) = map.remove(&sid_exit) {
+          let mut child_lock = handle.child.lock().await;
+          match child_lock.wait().await {
             Ok(status) => status.code().unwrap_or_default(),
             Err(_) => 255,
           }
@@ -151,14 +159,14 @@ impl SessionManager {
   pub async fn stop(&self, session_id: &str) -> Result<()> {
     let mut map = self.inner.lock().await;
     if let Some(handle) = map.remove(session_id) {
+      let mut child_lock = handle.child.lock().await;
       #[cfg(unix)]
       {
-        use tokio::process::Child;
-        let _ = handle.child.start_kill();
+        let _ = child_lock.start_kill();
       }
       #[cfg(not(unix))]
       {
-        let _ = handle.child.kill();
+        let _ = child_lock.kill().await;
       }
       Ok(())
     } else {
