@@ -2,13 +2,13 @@
 
 ## Overview
 
-A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with iOS next (using ios_system from GitHub for command execution); Windows/Linux/Android are planned.
+A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with Android next for mobile deployment; iOS/Windows/Linux are planned.
 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
-- Platforms: Supported now — macOS. Next — iOS. Planned — Windows, Linux, Android.
+- Platforms: Supported now — macOS. Next — Android. Planned — iOS, Windows, Linux.
 - Architectures: macOS/iOS/Android = aarch64 only; Windows/Linux = x86_64 only.
 - Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
-- Mobile runtime: iOS runs commands via ios_system (direct integration) in‑process. No PTY anywhere — all platforms operate without TTYs.
+- Mobile runtime: Android runs commands via best-effort stdio subprocess where platform policy allows. No PTY anywhere — all platforms operate without TTYs.
 
 ## Core Features
 
@@ -29,7 +29,7 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
 - Backend (Rust, Tauri)
   - IPC commands: Session/process lifecycle, file ops, command runner, plan update.
   - Process I/O: Subprocess management via stdio pipes only; no PTY usage on any platform.
-  - iOS execution path: Integrate ios_system to invoke shell‑like commands in‑process (no fork/exec). Commands unsupported by ios_system are not supported.
+  - Android execution path: Best-effort stdio subprocess execution where allowed by platform policy. Commands requiring TTY or blocked by Android sandboxing are unsupported.
   - File sandbox: restrict to configured workspace folder via Tauri FS scope.
   - Command allowlist + optional “escalated” prompt workflow.
 <!-- Remote execution is not part of the current scope. -->
@@ -51,11 +51,11 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - Signals: Supports SIGINT/SIGTERM; no job control (no TTY).
   - Packaging: `.app/.dmg`; codesign/notarization as configured.
 
-- iOS (aarch64, next)
-  - Command path: Use `ios_system` to execute built-in commands in-process through a native bridge.
-  - Scope: Only commands provided by `ios_system` are supported; TTY-required commands are unsupported.
-  - Integration: Add `src-tauri/ios/` bridge; include `ios_system` via SPM/Pods.
-  - UX: Same IPC/events; terminal remains non-interactive (no TUI support).
+- Android (aarch64, next)
+  - Command path: Best-effort stdio subprocess execution where allowed by platform policy.
+  - Scope: Commands requiring TTY or blocked by Android sandboxing are unsupported; focus on basic shell operations.
+  - Integration: Standard Tauri Android target with platform-specific command filtering and permission handling.
+  - UX: Touch-optimized interface with virtual keyboard; same IPC/events as desktop.
 
 - Windows (x86_64, future)
   - Shell invocation: `powershell.exe -NoProfile -Command` (configurable) via stdio pipes.
@@ -66,12 +66,13 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - Shell invocation: `/bin/sh -lc` (configurable) via stdio pipes.
   - Packaging: `.AppImage`/`.deb`/`.rpm` as feasible.
 
-- Android (aarch64, future)
-  - Command path: Best-effort stdio subprocess where allowed by platform policy.
-  - Scope: No PTY/TTY; many interactive tools will not work; packaging via `.aab`/`.apk`.
+- iOS (aarch64, future)
+  - Command path: Use `ios_system` to execute built-in commands in-process through a native bridge.
+  - Scope: Only commands provided by `ios_system` are supported; TTY-required commands are unsupported.
+  - Integration: Add `src-tauri/ios/` bridge; include `ios_system` via SPM/Pods.
 
 - Interaction Flow
-  - UI action → IPC `start_session`/`run_command` → Runner spawns stdio subprocess (or ios_system on iOS) → streams `command-progress` and `session-data` → UI updates xterm/Plan.
+  - UI action → IPC `start_session`/`run_command` → Runner spawns stdio subprocess (with platform-specific restrictions on Android/iOS) → streams `command-progress` and `session-data` → UI updates xterm/Plan.
 
 ## Implementation Plan
 
@@ -83,12 +84,13 @@ Phase 1 — macOS (aarch64) MVP
 - Security: Enforce workspace FS scope, command allowlist, and escalated approval flow; redact secrets in logs.
 - Build + QA: `pnpm tauri dev/build`; run unit/integration tests; execute the macOS user test (MCP Browser alongside the app).
 
-Phase 2 — iOS (aarch64) support
-- ios_system integration: Add SPM/Pods dependency; create `src-tauri/ios` native bridge (`ios_bridge.h/.mm`) to call ios_system and capture output.
-- Rust FFI: Add `extern "C"` bindings behind `cfg(target_os = "ios")`; route `run_command` to ios_system when available.
-- IPC/events parity: Reuse macOS IPC/events; ensure output chunking and status events mirror desktop behavior.
-- Packaging: Configure iOS Tauri target; codesign profiles; build `.ipa`; validate on device.
-- QA: Verify supported commands run; confirm unsupported/TTY-required commands are clearly surfaced as not supported.
+Phase 2 — Android (aarch64) support
+- Android integration: Configure Tauri Android target with appropriate permissions and command filtering.
+- Platform restrictions: Implement command allowlist based on Android platform policies; handle permission requests gracefully.
+- Mobile UI: Adapt interface for touch interaction; optimize virtual keyboard handling; implement gesture support.
+- IPC/events parity: Reuse macOS IPC/events; ensure output chunking and status events work on mobile WebView.
+- Packaging: Build `.aab`/`.apk`; configure signing and Play Store deployment; validate on physical devices.
+- QA: Test command execution within Android constraints; verify file access works within app sandbox.
 
 Phase 3 — Tooling and release hardening
 - CI: Add macOS aarch64 build job; lint (clippy), format (rustfmt), typecheck TS; cache Cargo/pnpm.
@@ -97,9 +99,9 @@ Phase 3 — Tooling and release hardening
 - Docs: Keep README Architecture View, iOS integration notes, and Testing up to date.
 
 Phase 4 — Future platforms (scope placeholder)
+- iOS (aarch64): ios_system integration with native bridge; SPM/Pods dependency; `.ipa` packaging via Xcode.
 - Windows (x86_64): Stdio PowerShell runner, path/quoting audits, packaging (`.msi/.exe`).
 - Linux (x86_64): Stdio `/bin/sh` runner, packaging (`.AppImage`/`.deb`/`.rpm`).
-- Android (aarch64): Best-effort stdio subprocess where policy allows; `.aab/.apk` packaging.
 
 ## Security Model
 
@@ -136,7 +138,7 @@ All commands return structured results with `ok`/`error` in Rust `Result<>` form
 - `stop_session(session_id: string): void`
 - `send_input(session_id: string, data: string): void`
 - `resize_view(session_id: string, cols: number, rows: number): void` (UI only; process does not receive TTY resize)
-- `run_command(args: string[], cwd?: string, escalated?: boolean): RunId` (runs with stdio pipes; no TTY. On iOS, routes to ios_system when supported.)
+- `run_command(args: string[], cwd?: string, escalated?: boolean): RunId` (runs with stdio pipes; no TTY. Platform-specific restrictions apply on mobile.)
 - `read_file(path: string): { content: string }` (scoped)
 - `write_file(path: string, content: string): void` (scoped)
 - `apply_patch(patch: string): { summary: string }` (scoped, validates format)
@@ -175,7 +177,7 @@ All commands return structured results with `ok`/`error` in Rust `Result<>` form
 
 - Model: All platforms use stdio pipes for subprocess I/O; no PTY allocation or TTY semantics.
 - Shell: Commands may be invoked via a configured shell (e.g., `/bin/zsh -lc` or `powershell -NoProfile -Command`), still without a TTY.
-- iOS: Prefer ios_system for built‑in commands to run them in‑process. Commands not covered by ios_system are not supported.
+- Mobile: Android uses best-effort subprocess execution within platform constraints. iOS (future) will use ios_system for in-process command execution.
 - Async runtime: `tokio` for non‑blocking pipes; stream output to UI in small chunks.
 - Encoding: UTF‑8 with lossy fallback for safety.
 - Cleanup: Kill child on window close or session stop; guard against zombies.
@@ -216,29 +218,35 @@ Prerequisites
 - Rust toolchain (stable), `cargo`.
 - Node.js 18+, package manager (pnpm/npm/yarn).
 - macOS (supported now): Xcode Command Line Tools, Tauri prerequisites. Architecture: aarch64 (Apple Silicon) only.
-- iOS (next): Xcode (latest), CocoaPods. Rust target: `aarch64-apple-ios` (device only; no simulator/x86_64). Integrates ios_system (via CocoaPods or SPM) and a small native bridge.
+- Android (next): Android SDK, NDK. Rust target: `aarch64-linux-android`. Uses standard Tauri Android build process.
 
-### iOS: ios_system Integration
-- Dependency:
-  - Swift Package Manager: Add package URL `https://github.com/holzschu/ios_system` and include the `ios_system` product.
-  - CocoaPods: If preferred, add `pod 'ios_system'` (refer to the repository for exact podspec/product names and any auxiliary pods).
-- Native bridge (under `src-tauri/ios/`):
-  - `ios_bridge.h/.mm`: Expose a minimal C interface that executes a command string with ios_system and streams stdout/stderr back to the Rust side. Example signature: `int ios_run_command(const char* cmd);` Optional: streaming callbacks for incremental output.
-  - Capture output by piping stdout/stderr within the bridge (e.g., with pipes) and forwarding chunks to the WebView via Tauri events.
-- Rust glue:
-  - Add `extern "C" { fn ios_run_command(cmd: *const c_char) -> c_int; }` behind `#[cfg(target_os = "ios")]`.
-  - In the `run_command` path on iOS, call into `ios_run_command` on a background task, emit `command-progress` events with chunks, and resolve on completion with exit code.
-- Xcode project:
-  - Add the bridge files to the iOS target, ensure the bridging header is visible, and link the `ios_system` product.
-  - Ensure code signing and entitlements match any ios_system requirements documented upstream.
-- Notes:
-  - ios_system executes a set of built-in shell-like commands in-process. Commands not covered by ios_system are not supported.
-  - Behavior is non-TTY; interactive TUIs are not supported.
+### Android: Mobile Development Setup
+- Prerequisites:
+  - Android SDK (API level 24+), Android NDK
+  - Rust target: `rustup target add aarch64-linux-android`
+  - Tauri CLI with Android support: `cargo install tauri-cli --features android`
+- Configuration:
+  - Configure `tauri.conf.json` for Android target with appropriate permissions
+  - Set up keystore for signing: `keytool -genkey -v -keystore keystore.jks`
+  - Define Android-specific command allowlist and filesystem scoping
+- Development:
+  - `pnpm tauri android init` — Initialize Android project
+  - `pnpm tauri android dev` — Run on connected device/emulator
+  - `pnpm tauri android build` — Build APK/AAB for distribution
+- Mobile UI adaptations:
+  - Touch-optimized terminal interaction
+  - Virtual keyboard integration with xterm.js
+  - Gesture support for scrolling and selection
+  - Context menus adapted for mobile interface
+- Platform constraints:
+  - File access limited to app sandbox and external storage permissions
+  - Command execution subject to Android security policies
+  - Network access requires appropriate permissions
 
 Common scripts
 - `pnpm install` — Install frontend deps
 - macOS Desktop: `pnpm tauri dev` | `pnpm tauri build`
-- iOS (next): `pnpm tauri ios dev` | `pnpm tauri ios build`
+- Android (next): `pnpm tauri android dev` | `pnpm tauri android build`
 
 ## Testing
 
@@ -279,8 +287,8 @@ Expected
 ## Packaging & Release
 
 - Initial: CI builds for macOS (.app/.dmg), architecture aarch64 only.
-- Next: iOS (.ipa via Xcode Archive/TestFlight), architecture aarch64 (devices) only.
-- Future: Windows (.msi/.exe) and Linux (.AppImage/.deb/.rpm) as feasible, architecture x86_64 only; Android (.aab/.apk), architecture aarch64 only.
+- Next: Android (.aab/.apk via Gradle), architecture aarch64 only.
+- Future: iOS (.ipa via Xcode Archive/TestFlight), Windows (.msi/.exe) and Linux (.AppImage/.deb/.rpm) as feasible, architecture aarch64 (iOS) or x86_64 (Windows/Linux).
 - Codesigning and notarization/provisioning hooks configurable per platform.
 - Auto‑update optional on desktop; mobile uses store updates.
 
@@ -288,7 +296,7 @@ Expected
 
 - No TTY: Full‑screen TUIs (e.g., `vim`, `top`), job control, and programs requiring a real terminal are unsupported.
 - Shell behavior: Without a TTY, some prompts and interactive flows may not function.
-- iOS: Command coverage follows ios_system; commands requiring a TTY or not implemented by ios_system are not supported.
+- Mobile: Android command execution is limited by platform sandboxing policies. iOS (future) will be limited to ios_system command coverage.
 - Sandboxed FS: External tools must operate inside workspace or via escrow flow.
 - Future: Optional TTY emulation layer for limited interactive support; multi‑pane layout; richer file diff viewer; plugin API; offline mobile engine via WASM where feasible.
 
