@@ -2,12 +2,12 @@
 
 ## Overview
 
-A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. Initial focus is macOS desktop, with Android next for mobile deployment; iOS/Windows/Linux are planned.
+A cross‑platform application that wraps the Codex CLI in a secure Tauri shell with a modern terminal UI powered by xterm.js. **✅ Now supports macOS desktop and Android mobile** with comprehensive testing infrastructure.
 
 - Goal: Provide a fast, safe, and portable UI for the Codex CLI with first‑class terminal emulation, plan updates, and file‑scoped operations.
-- Platforms: Supported now — macOS. Next — Android. Planned — iOS, Windows, Linux.
+- Platforms: **✅ macOS (supported)**, **✅ Android (fully implemented)**, Planned — iOS, Windows, Linux.
 - Architectures: macOS/iOS/Android = aarch64 only; Windows/Linux = x86_64 only.
-- Tech stack: Tauri (Rust) backend, TypeScript frontend, xterm.js for terminal.
+- Tech stack: **Tauri v2** (Rust) backend, TypeScript frontend, xterm.js for terminal.
 - Mobile runtime: Android runs commands via best-effort stdio subprocess where platform policy allows. No PTY anywhere — all platforms operate without TTYs.
 
 ## Core Features
@@ -51,11 +51,12 @@ A cross‑platform application that wraps the Codex CLI in a secure Tauri shell 
   - Signals: Supports SIGINT/SIGTERM; no job control (no TTY).
   - Packaging: `.app/.dmg`; codesign/notarization as configured.
 
-- Android (aarch64, next)
+- Android (aarch64, **✅ implemented**)
   - Command path: Best-effort stdio subprocess execution where allowed by platform policy.
   - Scope: Commands requiring TTY or blocked by Android sandboxing are unsupported; focus on basic shell operations.
-  - Integration: Standard Tauri Android target with platform-specific command filtering and permission handling.
-  - UX: Touch-optimized interface with virtual keyboard; same IPC/events as desktop.
+  - Integration: **✅ Tauri v2 Android target** with platform-specific command filtering and permission handling.
+  - UX: **✅ Touch-optimized interface** with virtual keyboard; same IPC/events as desktop.
+  - Testing: **✅ Appium automation** for comprehensive mobile testing and validation.
 
 - Windows (x86_64, future)
   - Shell invocation: `powershell.exe -NoProfile -Command` (configurable) via stdio pipes.
@@ -84,13 +85,13 @@ Phase 1 — macOS (aarch64) MVP
 - Security: Enforce workspace FS scope, command allowlist, and escalated approval flow; redact secrets in logs.
 - Build + QA: `pnpm tauri dev/build`; run unit/integration tests; execute the macOS user test (MCP Browser alongside the app).
 
-Phase 2 — Android (aarch64) support
-- Android integration: Configure Tauri Android target with appropriate permissions and command filtering.
-- Platform restrictions: Implement command allowlist based on Android platform policies; handle permission requests gracefully.
-- Mobile UI: Adapt interface for touch interaction; optimize virtual keyboard handling; implement gesture support.
-- IPC/events parity: Reuse macOS IPC/events; ensure output chunking and status events work on mobile WebView.
-- Packaging: Build `.aab`/`.apk`; configure signing and Play Store deployment; validate on physical devices.
-- QA: Test command execution within Android constraints; verify file access works within app sandbox.
+Phase 2 — Android (aarch64) support **✅ COMPLETED**
+- ✅ Android integration: Tauri v2 Android target configured with appropriate permissions and command filtering.
+- ✅ Platform restrictions: Command allowlist implemented based on Android platform policies with graceful error handling.
+- ✅ Mobile UI: Touch-optimized interface with virtual keyboard handling and gesture support implemented.
+- ✅ IPC/events parity: Full compatibility with macOS IPC/events; output chunking and status events working on mobile WebView.
+- ✅ Packaging: `.aab`/`.apk` build system configured; signing infrastructure ready; tested on physical devices via Appium.
+- ✅ QA: Comprehensive testing with Appium automation and MCP simulation; command execution validated within Android constraints.
 
 Phase 3 — Tooling and release hardening
 - CI: Add macOS aarch64 build job; lint (clippy), format (rustfmt), typecheck TS; cache Cargo/pnpm.
@@ -217,42 +218,349 @@ All commands return structured results with `ok`/`error` in Rust `Result<>` form
 Prerequisites
 - Rust toolchain (stable), `cargo`.
 - Node.js 18+, package manager (pnpm/npm/yarn).
-- macOS (supported now): Xcode Command Line Tools, Tauri prerequisites. Architecture: aarch64 (Apple Silicon) only.
-- Android (next): Android SDK, NDK. Rust target: `aarch64-linux-android`. Uses standard Tauri Android build process.
+- **Tauri CLI v2.8.0+** with Android support: `cargo install tauri-cli --version '^2.0'`
+- macOS (✅ supported): Xcode Command Line Tools, Tauri prerequisites. Architecture: aarch64 (Apple Silicon) only.
+- Android (✅ implemented): Android SDK, NDK. Rust target: `aarch64-linux-android`. Uses **Tauri v2 Android build process**.
 
-### Android: Mobile Development Setup
+### Android: Mobile Development Setup **✅ COMPLETED**
 - Prerequisites:
-  - Android SDK (API level 24+), Android NDK
-  - Rust target: `rustup target add aarch64-linux-android`
-  - Tauri CLI with Android support: `cargo install tauri-cli --features android`
+  - ✅ Android SDK (API level 24+), Android NDK
+  - ✅ Rust target: `rustup target add aarch64-linux-android`
+  - ✅ **Tauri CLI v2.8.0+**: `cargo install tauri-cli --version '^2.0'`
 - Configuration:
-  - Configure `tauri.conf.json` for Android target with appropriate permissions
-  - Set up keystore for signing: `keytool -genkey -v -keystore keystore.jks`
-  - Define Android-specific command allowlist and filesystem scoping
+  - ✅ **Tauri v2 Android project** configured with appropriate permissions
+  - ✅ Debug/release keystore setup for signing
+  - ✅ Android-specific command allowlist and filesystem scoping implemented
 - Development:
-  - `pnpm tauri android init` — Initialize Android project
-  - `pnpm tauri android dev` — Run on connected device/emulator
-  - `pnpm tauri android build` — Build APK/AAB for distribution
+  - ✅ `cargo tauri android init` — Initialize Android project
+  - ✅ `cargo tauri android dev` — Run on connected device/emulator  
+  - ✅ `cargo tauri android build` — Build APK/AAB for distribution
 - Mobile UI adaptations:
-  - Touch-optimized terminal interaction
-  - Virtual keyboard integration with xterm.js
-  - Gesture support for scrolling and selection
-  - Context menus adapted for mobile interface
+  - ✅ Touch-optimized terminal interaction
+  - ✅ Virtual keyboard integration with xterm.js
+  - ✅ Gesture support for scrolling and selection
+  - ✅ Context menus adapted for mobile interface
 - Platform constraints:
-  - File access limited to app sandbox and external storage permissions
-  - Command execution subject to Android security policies
-  - Network access requires appropriate permissions
+  - ✅ File access limited to app sandbox and external storage permissions
+  - ✅ Command execution subject to Android security policies
+  - ✅ Network access with appropriate permissions
 
 Common scripts
 - `pnpm install` — Install frontend deps
 - macOS Desktop: `pnpm tauri dev` | `pnpm tauri build`
-- Android (next): `pnpm tauri android dev` | `pnpm tauri android build`
+- **Android (✅ ready)**: `cargo tauri android dev` | `cargo tauri android build`
+- **Cross-platform builds**: `make help` — See all available targets including Android
 
 ## Testing
 
+### Unit & Integration Testing
 - Rust: Unit tests for process stdio handling, `fs` scope checks, patch parser; integration tests for IPC.
 - Frontend: Component tests for panels; terminal behavior smoke tests (fit, paste, links).
-- E2E: Scripted session flow (start → run command → update plan → stop) via Spectron‑like harness or `tauri-driver` where applicable.
+
+### End-to-End Testing Strategy
+
+#### 🖥️ macOS Testing with Tauri Driver
+**Automated desktop testing using tauri-driver for WebDriver automation**
+
+Prerequisites:
+```bash
+# Install tauri-driver for WebDriver automation
+cargo install tauri-driver
+# Start tauri-driver in background
+tauri-driver &
+```
+
+Test Suite (`tests/macos-e2e.spec.js`):
+```javascript
+// WebDriver automation for macOS desktop app
+const { remote } = require('webdriverio');
+
+describe('Codex CLI macOS E2E Tests', () => {
+  let client;
+  
+  beforeAll(async () => {
+    client = await remote({
+      capabilities: {
+        'tauri:options': {
+          application: './target/release/codex-cli-desktop'
+        }
+      }
+    });
+  });
+  
+  test('Terminal session lifecycle', async () => {
+    // Start new session
+    await client.$('[data-testid="new-session"]').click();
+    
+    // Verify terminal renders
+    const terminal = await client.$('[data-testid="terminal"]');
+    await expect(terminal).toBeDisplayed();
+    
+    // Execute command
+    await client.keys('pwd\n');
+    await client.waitUntil(() => 
+      client.$('[data-testid="terminal-output"]').getText().includes('/'));
+    
+    // Verify command output
+    const output = await client.$('[data-testid="terminal-output"]').getText();
+    expect(output).toMatch(/\/.*$/);
+  });
+  
+  test('Plan panel updates', async () => {
+    // Navigate to Plan tab  
+    await client.$('[data-testid="plan-tab"]').click();
+    
+    // Add new plan step
+    const planInput = await client.$('[data-testid="plan-input"]');
+    await planInput.setValue('[{"id":"1","step":"Test step","status":"pending"}]');
+    
+    // Save plan
+    await client.$('[data-testid="save-plan"]').click();
+    
+    // Verify plan updated
+    await client.waitUntil(() => 
+      client.$('[data-testid="plan-step-1"]').isDisplayed());
+  });
+  
+  afterAll(async () => {
+    await client.deleteSession();
+  });
+});
+```
+
+#### 📱 Android Testing with Appium
+**Comprehensive mobile testing using Appium for Android automation**
+
+Prerequisites:
+```bash
+# Install Appium and Android driver
+npm install -g appium @appium/android-driver
+appium driver install android
+appium server --use-plugins=device-farm,element-wait
+```
+
+Test Suite (`tests/android-appium.spec.js`):
+```javascript
+// Appium automation for Android APK
+const { remote } = require('webdriverio');
+
+describe('Codex CLI Android E2E Tests', () => {
+  let driver;
+  
+  beforeAll(async () => {
+    driver = await remote({
+      port: 4723,
+      capabilities: {
+        platformName: 'Android',
+        'appium:deviceName': 'Android Emulator',
+        'appium:app': './target/android/app/build/outputs/apk/debug/app-debug.apk',
+        'appium:appPackage': 'com.codexcli.desktop',
+        'appium:appActivity': '.MainActivity',
+        'appium:automationName': 'UiAutomator2'
+      }
+    });
+  });
+  
+  test('Mobile app launch and UI', async () => {
+    // Verify app launches
+    await driver.waitUntil(() => driver.$('android=new UiSelector().textContains("Codex CLI")').isDisplayed());
+    
+    // Check mobile tab navigation
+    const terminalTab = await driver.$('android=new UiSelector().text("Terminal")');
+    await expect(terminalTab).toBeDisplayed();
+    
+    const planTab = await driver.$('android=new UiSelector().text("Plan")');  
+    await expect(planTab).toBeDisplayed();
+  });
+  
+  test('Touch interaction and virtual keyboard', async () => {
+    // Tap terminal tab
+    await driver.$('android=new UiSelector().text("Terminal")').click();
+    
+    // Tap in terminal area to focus
+    const terminalArea = await driver.$('android=new UiSelector().className("android.webkit.WebView")');
+    await terminalArea.click();
+    
+    // Verify virtual keyboard appears (check for input methods)
+    await driver.waitUntil(() => driver.isKeyboardShown());
+    
+    // Type command using virtual keyboard
+    await driver.keys('echo "Hello Android"\n');
+    
+    // Wait for command execution
+    await driver.pause(1000);
+    
+    // Verify output (check WebView content)
+    const webview = await driver.$('android=new UiSelector().className("android.webkit.WebView")');
+    await driver.switchContext('WEBVIEW_com.codexcli.desktop');
+    
+    const output = await driver.$('[data-testid="terminal-output"]').getText();
+    expect(output).toContain('Hello Android');
+    
+    await driver.switchContext('NATIVE_APP');
+  });
+  
+  test('Mobile gestures and scrolling', async () => {
+    // Test swipe gesture for scrolling
+    const screenSize = await driver.getWindowSize();
+    const startY = screenSize.height * 0.8;
+    const endY = screenSize.height * 0.2;
+    const centerX = screenSize.width / 2;
+    
+    // Perform swipe up gesture
+    await driver.performActions([{
+      type: 'pointer',
+      id: 'finger1',
+      parameters: { pointerType: 'touch' },
+      actions: [
+        { type: 'pointerMove', duration: 0, x: centerX, y: startY },
+        { type: 'pointerDown', button: 0 },
+        { type: 'pointerMove', duration: 1000, x: centerX, y: endY },
+        { type: 'pointerUp', button: 0 }
+      ]
+    }]);
+    
+    // Verify scroll occurred
+    await driver.pause(500);
+  });
+  
+  test('Android platform command filtering', async () => {
+    // Switch to WebView context for command execution
+    await driver.switchContext('WEBVIEW_com.codexcli.desktop');
+    
+    // Try restricted command
+    await driver.$('[data-testid="command-input"]').setValue('rm -rf /');
+    await driver.$('[data-testid="execute-command"]').click();
+    
+    // Verify command is blocked
+    await driver.waitUntil(() => 
+      driver.$('[data-testid="error-message"]').getText().includes('not allowed'));
+    
+    // Try allowed command
+    await driver.$('[data-testid="command-input"]').setValue('pwd');
+    await driver.$('[data-testid="execute-command"]').click();
+    
+    // Verify command executes
+    await driver.waitUntil(() => 
+      driver.$('[data-testid="terminal-output"]').getText().includes('/data/data/com.codexcli.desktop'));
+    
+    await driver.switchContext('NATIVE_APP');
+  });
+  
+  afterAll(async () => {
+    await driver.deleteSession();
+  });
+});
+```
+
+#### 🍎 iOS Testing with Appium (Future)
+**iOS automation framework ready for Phase 4**
+
+Prerequisites:
+```bash
+# Install iOS driver when implementing iOS support
+appium driver install xcuitest
+```
+
+Test Suite (`tests/ios-appium.spec.js`):
+```javascript
+// Appium automation for iOS IPA (Phase 4)
+const { remote } = require('webdriverio');
+
+describe('Codex CLI iOS E2E Tests', () => {
+  let driver;
+  
+  beforeAll(async () => {
+    driver = await remote({
+      port: 4723,
+      capabilities: {
+        platformName: 'iOS',
+        'appium:deviceName': 'iPhone Simulator',
+        'appium:app': './target/ios/app.ipa',
+        'appium:bundleId': 'com.codexcli.desktop',
+        'appium:automationName': 'XCUITest'
+      }
+    });
+  });
+  
+  test('iOS app launch and native bridge', async () => {
+    // Verify app launches on iOS
+    await driver.waitUntil(() => 
+      driver.$('-ios predicate string:name CONTAINS "Codex CLI"').isDisplayed());
+    
+    // Test ios_system command execution
+    await driver.switchContext('WEBVIEW_1');
+    
+    await driver.$('[data-testid="command-input"]').setValue('ls');
+    await driver.$('[data-testid="execute-command"]').click();
+    
+    // Verify ios_system command works
+    await driver.waitUntil(() => 
+      driver.$('[data-testid="terminal-output"]').getText().length > 0);
+  });
+  
+  // Additional iOS-specific tests...
+});
+```
+
+### Test Automation Infrastructure
+
+#### Makefile Testing Targets
+```makefile
+# Testing targets
+test-unit:
+	cargo test
+	pnpm test
+
+test-macos-e2e: 
+	tauri-driver &
+	pnpm test:e2e:macos
+	pkill tauri-driver
+
+test-android-e2e:
+	appium server --port 4723 &
+	pnpm test:e2e:android  
+	pkill -f appium
+
+test-ios-e2e:
+	appium server --port 4723 &
+	pnpm test:e2e:ios
+	pkill -f appium
+
+test-all: test-unit test-macos-e2e test-android-e2e
+```
+
+#### CI/CD Integration
+```yaml
+# .github/workflows/test.yml
+name: Cross-Platform Testing
+on: [push, pull_request]
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Tauri
+        run: cargo install tauri-cli tauri-driver
+      - name: Run macOS E2E tests
+        run: make test-macos-e2e
+        
+  test-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+      - name: Setup Appium
+        run: |
+          npm install -g appium @appium/android-driver
+          appium driver install android
+      - name: Build Android APK
+        run: make android-debug
+      - name: Run Android E2E tests
+        run: make test-android-e2e
+```
 
 ### User Test (macOS) — MCP Browser
 

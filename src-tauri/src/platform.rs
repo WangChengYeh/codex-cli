@@ -11,14 +11,14 @@ impl Platform {
     pub fn current() -> Self {
         #[cfg(target_os = "android")]
         return Platform::Android;
-        
+
         #[cfg(target_os = "ios")]
         return Platform::iOS;
-        
+
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         return Platform::Desktop;
     }
-    
+
     pub fn is_mobile(&self) -> bool {
         matches!(self, Platform::Android | Platform::iOS)
     }
@@ -87,9 +87,11 @@ impl PlatformConfig {
             },
         }
     }
-    
+
     pub fn is_command_allowed(&self, command: &str) -> bool {
-        self.command_allowlist.iter().any(|allowed| allowed == command)
+        self.command_allowlist
+            .iter()
+            .any(|allowed| allowed == command)
     }
 }
 

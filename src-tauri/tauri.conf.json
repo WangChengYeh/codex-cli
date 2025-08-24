@@ -1,28 +1,29 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/v1/tooling/cli/schema.json",
-  "package": {
-    "productName": "Codex CLI Desktop",
-    "version": "0.1.0"
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../src"
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "fs": {
-        "all": true,
-        "scope": ["$APPDATA/*", "$APPDATA/**"]
-      },
-      "shell": {
-        "all": false,
-        "open": true,
-        "execute": true,
-        "sidecar": false
-      },
-      "dialog": {
-        "all": true
-      },
-      "notification": {
-        "all": true
-      }
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "productName": "Codex CLI Desktop",
+  "mainBinaryName": "Codex CLI Desktop",
+  "version": "0.1.0",
+  "identifier": "com.codexcli.desktop",
+  "plugins": {},
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost ipc: http://ipc.localhost"
     },
     "windows": [
       {
@@ -30,32 +31,9 @@
         "width": 1000,
         "height": 700,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "useHttpsScheme": true
       }
-    ],
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.codexcli.desktop",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ]
-    },
-    "updater": {
-      "active": false
-    },
-    "security": {
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost"
-    }
-  },
-  "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "devPath": "../src",
-    "distDir": "../src"
+    ]
   }
 }
