@@ -247,17 +247,58 @@ Prerequisites
   - ✅ Command execution subject to Android security policies
   - ✅ Network access with appropriate permissions
 
-Common scripts
-- `pnpm install` — Install frontend deps
-- macOS Desktop: `pnpm tauri dev` | `pnpm tauri build`
-- **Android (✅ ready)**: `cargo tauri android dev` | `cargo tauri android build`
-- **Cross-platform builds**: `make help` — See all available targets including Android
+### Development Scripts
+- `pnpm install` — Install frontend dependencies
+- `pnpm tauri dev` — Run development server with hot reload
+- `pnpm tauri build` — Build production bundle for current platform
 
-## Testing
+#### Platform-Specific Commands  
+- **macOS Desktop**: `pnpm tauri dev` | `pnpm tauri build`
+- **Android Mobile**: `cargo tauri android dev` | `cargo tauri android build`
+- **Cross-platform**: Use `make` targets for automated builds:
+  ```bash
+  make help              # Show all available targets
+  make dev              # Start macOS development server
+  make android-setup    # Configure Android environment
+  make android-debug    # Build Android APK  
+  make android-install  # Install APK on connected device
+  ```
 
-### Unit & Integration Testing
-- Rust: Unit tests for process stdio handling, `fs` scope checks, patch parser; integration tests for IPC.
-- Frontend: Component tests for panels; terminal behavior smoke tests (fit, paste, links).
+#### Quality Assurance Commands
+```bash
+# Testing
+pnpm test                    # Run all tests
+pnpm test:unit              # Unit tests only
+pnpm test:e2e               # End-to-end tests
+pnpm test:e2e:macos         # macOS desktop testing
+pnpm test:e2e:android       # Android mobile testing
+pnpm test:coverage          # Generate coverage reports
+
+# Code Quality  
+pnpm format                 # Format code with Prettier
+pnpm format:check          # Check code formatting
+pnpm lint                  # Lint TypeScript/JavaScript
+```
+
+## Testing & Quality Assurance
+
+### Comprehensive Testing Strategy
+The project employs **multi-layered testing** to ensure reliability across all platforms and user scenarios:
+
+#### ✅ **Unit & Integration Testing**
+- **Rust Backend**: Unit tests for process stdio handling, filesystem scope validation, patch parsing, and IPC command surface
+- **TypeScript Frontend**: Component tests for UI panels, terminal behavior, and user interactions
+- **Integration Tests**: End-to-end validation of frontend-backend communication
+
+#### ✅ **Automated User Testing (Appium)**
+**Real user simulation** using Appium WebDriver automation to validate complete user workflows on both desktop and mobile platforms.
+
+**Test Coverage:**
+- ✅ **Terminal Operations**: Command execution, output streaming, session management
+- ✅ **Plan Management**: Dynamic updates, validation rules, real-time synchronization  
+- ✅ **File Operations**: Read/write within workspace, security boundary enforcement
+- ✅ **Mobile UX**: Touch interactions, virtual keyboard, gesture support
+- ✅ **Cross-Platform Parity**: Feature consistency across macOS and Android
 
 ### End-to-End Testing Strategy
 
