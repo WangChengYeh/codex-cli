@@ -2,4 +2,5 @@
 members = ["src-tauri"]
 
 [package]
+name = "codex-cli-workspace"
 version = "0.1.0"
