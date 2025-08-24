@@ -24,7 +24,7 @@ thiserror = "1"
 # local codex apply-patch crate
 apply-patch = { package = "codex-apply-patch", path = "../external/codex/codex-rs/apply-patch" }
 tauri-plugin-fs = "2"
-tauri-plugin-notification = "2"
+# tauri-plugin-notification = "2"  # Temporarily disabled due to macOS SDK issues
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 
