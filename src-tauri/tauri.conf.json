@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/v1/tooling/cli/schema.json",
+  "package": {
+    "productName": "Codex CLI Desktop",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "windows": [
+      {
+        "title": "Codex CLI Desktop",
+        "width": 1000,
+        "height": 700
+      }
+    ],
+    "bundle": {
+      "active": true,
+      "targets": "all"
+    },
+    "security": {
+      "csp": null,
+      "allowlist": {
+        "shell": false,
+        "fs": {
+          "all": false,
+          "readFile": true,
+          "writeFile": true
+        }
+      }
+    },
+    "updater": {
+      "active": false
+    }
+  },
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devPath": "src",
+    "distDir": "src"
+  }
+}
+
