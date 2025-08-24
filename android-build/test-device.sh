@@ -24,8 +24,8 @@ echo "✅ Found $DEVICES connected device(s)"
 adb devices
 
 # Find APK file
-DEBUG_APK="target/android/app/build/outputs/apk/debug/app-debug.apk"
-RELEASE_APK="target/android/app/build/outputs/apk/release/app-release.apk"
+DEBUG_APK="../src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk"
+RELEASE_APK="../src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk"
 
 APK_FILE=""
 if [ -f "$DEBUG_APK" ]; then

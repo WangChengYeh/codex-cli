@@ -10,26 +10,9 @@ echo "   Target: $TARGET"
 
 # Check if Tauri CLI supports Android
 if ! cargo tauri --help | grep -q "android"; then
-    echo "❌ Tauri CLI doesn't support Android. Please upgrade to Tauri v2.0+:"
-    echo "   cargo install tauri-cli --version '^2.0'"
+    echo "❌ Tauri CLI doesn't support Android. Please install Tauri v2.0+ with Android support:"
+    echo "   cargo install tauri-cli --git https://github.com/tauri-apps/tauri --branch=next"
     exit 1
-fi
-
-# Initialize Android project if not already done
-if [ ! -d "src-tauri/gen/android" ]; then
-    echo "🔧 Initializing Android project..."
-    cargo tauri android init || {
-        echo "⚠️  Android initialization failed. This is expected without Android SDK."
-        echo "   The build infrastructure is ready and will work once Android SDK is installed."
-        echo ""
-        echo "📋 To complete Android setup:"
-        echo "   1. Install Android Studio: https://developer.android.com/studio"
-        echo "   2. Set environment variables:"
-        echo "      export ANDROID_HOME=\$HOME/Android/Sdk"
-        echo "      export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools"
-        echo "   3. Re-run: make android-debug"
-        exit 1
-    }
 fi
 
 case $BUILD_TYPE in

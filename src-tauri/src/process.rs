@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 use std::{path::PathBuf, process::Stdio};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -23,7 +23,7 @@ pub async fn run_command_emit(
     cwd: Option<String>,
 ) -> Result<String> {
     let run_id = Uuid::new_v4().to_string();
-    app.emit_all(
+    app.emit(
         "command-progress",
         &Progress::Start {
             run_id: run_id.clone(),
@@ -99,7 +99,7 @@ pub async fn run_command_emit(
         let mut reader = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = reader.next_line().await {
             let chunk = redact(&(line + "\n"));
-            let _ = app_stdout.emit_all(
+            let _ = app_stdout.emit(
                 "command-progress",
                 &Progress::Stdout {
                     run_id: run_id_stdout.clone(),
@@ -115,7 +115,7 @@ pub async fn run_command_emit(
         let mut reader = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = reader.next_line().await {
             let chunk = redact(&(line + "\n"));
-            let _ = app_stderr.emit_all(
+            let _ = app_stderr.emit(
                 "command-progress",
                 &Progress::Stderr {
                     run_id: run_id_stderr.clone(),
@@ -127,7 +127,7 @@ pub async fn run_command_emit(
 
     let status = child.wait().await?;
     let code = status.code().unwrap_or_default();
-    app.emit_all(
+    app.emit(
         "command-progress",
         &Progress::Done {
             run_id: run_id.clone(),

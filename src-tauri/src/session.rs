@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, ChildStdin, Command},
@@ -116,7 +116,7 @@ impl SessionManager {
             let mut reader = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let data = redact(&(line.to_string() + "\n"));
-                let _ = app_stdout.emit_all(
+                let _ = app_stdout.emit(
                     "session-data",
                     &SessionDataEvent {
                         session_id: &sid_out,
@@ -133,7 +133,7 @@ impl SessionManager {
             let mut reader = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let data = redact(&(line.to_string() + "\n"));
-                let _ = app_stderr.emit_all(
+                let _ = app_stderr.emit(
                     "session-data",
                     &SessionDataEvent {
                         session_id: &sid_err,
@@ -166,7 +166,7 @@ impl SessionManager {
                     255
                 }
             };
-            let _ = app_exit.emit_all(
+            let _ = app_exit.emit(
                 "session-exit",
                 &SessionExitEvent {
                     session_id: &sid_exit,
